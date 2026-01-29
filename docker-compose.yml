@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: poa-tracker-db
+    restart: always
+    environment:
+      POSTGRES_USER: poauser
+      POSTGRES_PASSWORD: poapass123
+      POSTGRES_DB: poa_tracker
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - poa-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: poa-tracker-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@poa.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5051:80"
+    depends_on:
+      - postgres
+    networks:
+      - poa-network
+
+volumes:
+  postgres-data:
+
+networks:
+  poa-network:
+    driver: bridge
