@@ -101,6 +101,28 @@ export default function Login() {
             </button>
           </div>
 
+          <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs font-semibold text-gray-700">Credenciales por rol</p>
+            <ul className="mt-2 space-y-2 text-xs text-gray-700">
+              <li className="flex flex-col">
+                <span className="font-medium">Admin</span>
+                <span>admin@example.com / admin123</span>
+              </li>
+              <li className="flex flex-col">
+                <span className="font-medium">Supervisor POA</span>
+                <span>supervisor@example.com / supervisor123</span>
+              </li>
+              <li className="flex flex-col">
+                <span className="font-medium">Coordinador</span>
+                <span>coordinator@example.com / coordinator123</span>
+              </li>
+              <li className="flex flex-col">
+                <span className="font-medium">Usuario</span>
+                <span>user@example.com / user123</span>
+              </li>
+            </ul>
+          </div>
+
           <div className="text-center">
             <p className="text-sm text-gray-600">
               ¿No tienes cuenta?{' '}

@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { PoaTemplateActivity } from '../../poa-templates/entities/poa-template-activity.entity';
 import { AgreementActivity } from '../../agreement-activities/entities/agreement-activity.entity';
+import { PoaActivity } from '../../poa-activities/entities/poa-activity.entity';
 
 @Entity('programs')
 @Index(['name'])
@@ -34,6 +35,12 @@ export class Program {
     eager: false,
   })
   agreementActivities: AgreementActivity[];
+
+  @OneToMany(() => PoaActivity, (activity) => activity.program, {
+    cascade: true,
+    onDelete: 'SET NULL',
+  })
+  poaActivities?: PoaActivity[];
 
   @CreateDateColumn()
   createdAt: Date;

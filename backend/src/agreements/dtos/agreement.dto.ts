@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsUUID,
   IsDateString,
+  IsNumber,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AgreementStatus } from '../entities/agreement.entity';
@@ -84,8 +85,8 @@ export class AgreementFilterDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  department?: string;
+  @IsUUID()
+  departmentId?: string;
 
   @ApiProperty({ required: false })
   @IsEnum(AgreementStatus)
@@ -93,9 +94,15 @@ export class AgreementFilterDto {
   status?: AgreementStatus;
 
   @ApiProperty({ required: false, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   page?: number;
 
   @ApiProperty({ required: false, default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   limit?: number;
 }
 
@@ -111,7 +118,10 @@ export class AgreementResponseDto {
     id: string;
     code: string;
     name: string;
-    department: string;
+    department?: {
+      id: string;
+      name: string;
+    };
   };
   createdAt: Date;
   updatedAt: Date;

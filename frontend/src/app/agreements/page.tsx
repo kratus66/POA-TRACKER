@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
+import Layout from '@/components/Layout';
 import Link from 'next/link';
 
 interface Municipality {
   id: string;
   code: string;
   name: string;
-  department: string;
+  department: string | { id: string; name: string };
+  departmentId?: string;
 }
 
 interface Agreement {
@@ -50,7 +52,8 @@ export default function Agreements() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [agreements, setAgreements] = useState<Agreement[]>([]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [filteredMunicipalities, setFilteredMunicipalities] = useState<Municipality[]>([]);
+  const [departments, setDepartments] = useState<Array<{id: string; name: string}>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMunicipality, setSelectedMunicipality] = useState(
@@ -61,6 +64,7 @@ export default function Agreements() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [formDepartmentId, setFormDepartmentId] = useState('');
   const [newAgreement, setNewAgreement] = useState({
     agreementNumber: '',
     startDate: '',
@@ -78,7 +82,6 @@ export default function Agreements() {
 
   useEffect(() => {
     fetchDepartments();
-    fetchMunicipalities();
   }, []);
 
   useEffect(() => {
@@ -88,38 +91,44 @@ export default function Agreements() {
   const fetchDepartments = async () => {
     try {
       const response = await apiClient.get('/municipalities/departments');
-      setDepartments(response);
+      console.log('Departments response:', response);
+      setDepartments(Array.isArray(response) ? response : []);
     } catch (err) {
       console.error('Error fetching departments:', err);
+      setError(`Error al cargar departamentos: ${err}`);
+      setDepartments([]);
     }
   };
 
-  const fetchMunicipalities = async () => {
+  const fetchMunicipalitiesByDepartment = async (departmentId: string) => {
     try {
-      const response = await apiClient.get('/municipalities?limit=1000');
+      const response = await apiClient.get(`/municipalities?departmentId=${departmentId}&limit=500`);
+      console.log('Municipalities for dept:', response);
       const data = response as MunicipalityApiResponse;
-      setMunicipalities(data.data);
+      const munList = data.data || data;
+      console.log('Municipios del departamento:', munList.length);
+      setFilteredMunicipalities(munList);
     } catch (err) {
-      console.error('Error fetching municipalities:', err);
+      console.error('Error fetching municipalities by department:', err);
+      setFilteredMunicipalities([]);
     }
   };
+
+  // Ya no necesitamos fetchMunicipalities ni filteredMunicipalitiesForForm
+  // Ahora cargamos municipios on-demand cuando se selecciona un departamento
 
   const fetchAgreements = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedMunicipality) params.append('municipalityId', selectedMunicipality);
-      if (selectedDepartment) params.append('department', selectedDepartment);
-      if (selectedStatus) params.append('status', selectedStatus);
-      params.append('page', page.toString());
-      params.append('limit', '10');
-
-      const response = await apiClient.get(`/agreements?${params.toString()}`);
+      // Intentar sin parámetros primero para diagnosticar
+      const response = await apiClient.get('/agreements');
+      console.log('Agreements response:', response);
       const data = response as ApiResponse;
-      setAgreements(data.data);
-      setTotalPages(data.pagination.pages);
+      setAgreements(Array.isArray(data) ? data : (data.data || []));
+      setTotalPages(data.pagination?.pages || 1);
       setError(null);
     } catch (err: any) {
+      console.error('Agreements error:', err);
       setError(err.message || 'Error al cargar convenios');
     } finally {
       setLoading(false);
@@ -138,6 +147,7 @@ export default function Agreements() {
         description: '',
         municipalityId: '',
       });
+      setFormDepartmentId('');
       setShowCreateForm(false);
       setPage(1);
       await fetchAgreements();
@@ -147,12 +157,16 @@ export default function Agreements() {
     }
   };
 
+  // Ya no necesitamos esta función de filtrado
+  // Los municipios se cargan dinámicamente por departamento
+
   if (authLoading || (isAuthenticated && loading)) {
     return <div className="p-8 text-center">Cargando...</div>;
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Convenios</h1>
         <p className="text-gray-600">Gestiona los convenios y vigencias POA</p>
@@ -195,6 +209,32 @@ export default function Agreements() {
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
                 />
                 <select
+                  value={formDepartmentId}
+                  onChange={(e) => {
+                    const deptId = e.target.value;
+                    setFormDepartmentId(deptId);
+                    setNewAgreement({
+                      ...newAgreement,
+                      municipalityId: '', // Limpiar municipio cuando cambia departamento
+                    });
+                    // Cargar municipios del departamento seleccionado
+                    if (deptId) {
+                      fetchMunicipalitiesByDepartment(deptId);
+                    } else {
+                      setFilteredMunicipalities([]);
+                    }
+                  }}
+                  required
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
+                >
+                  <option value="">Selecciona departamento</option>
+                  {departments.map((dept: any) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name || dept}
+                    </option>
+                  ))}
+                </select>
+                <select
                   value={newAgreement.municipalityId}
                   onChange={(e) =>
                     setNewAgreement({
@@ -203,10 +243,13 @@ export default function Agreements() {
                     })
                   }
                   required
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
+                  disabled={!formDepartmentId}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 disabled:bg-gray-100"
                 >
-                  <option value="">Selecciona municipio</option>
-                  {municipalities.map((mun) => (
+                  <option value="">
+                    {formDepartmentId ? `Selecciona municipio (${filteredMunicipalities.length} disponibles)` : 'Primero selecciona departamento'}
+                  </option>
+                  {filteredMunicipalities.map((mun) => (
                     <option key={mun.id} value={mun.id}>
                       {mun.name}
                     </option>
@@ -296,9 +339,9 @@ export default function Agreements() {
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-primary-500"
         >
           <option value="">Todos los departamentos</option>
-          {departments.map((dept) => (
-            <option key={dept} value={dept}>
-              {dept}
+          {departments.map((dept: any) => (
+            <option key={dept.id} value={dept.id}>
+              {dept.name || dept}
             </option>
           ))}
         </select>
@@ -410,5 +453,6 @@ export default function Agreements() {
         </button>
       </div>
     </div>
+    </Layout>
   );
 }

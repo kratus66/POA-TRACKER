@@ -55,19 +55,20 @@ export class AgreementsService {
   }
 
   async findAll(filterDto: AgreementFilterDto) {
-    const { municipalityId, department, status, page = 1, limit = 10 } =
+    const { municipalityId, departmentId, status, page = 1, limit = 10 } =
       filterDto;
 
     const query = this.agreementRepository
       .createQueryBuilder('a')
-      .leftJoinAndSelect('a.municipality', 'm');
+      .leftJoinAndSelect('a.municipality', 'm')
+      .leftJoinAndSelect('m.department', 'd');
 
     if (municipalityId) {
       query.where('a.municipalityId = :municipalityId', { municipalityId });
     }
 
-    if (department) {
-      query.andWhere('m.department = :department', { department });
+    if (departmentId) {
+      query.andWhere('m.departmentId = :departmentId', { departmentId });
     }
 
     if (status) {
@@ -93,7 +94,7 @@ export class AgreementsService {
   async findById(id: string) {
     const agreement = await this.agreementRepository.findOne({
       where: { id },
-      relations: ['municipality', 'poaPeriods'],
+      relations: ['municipality', 'municipality.department', 'poaPeriods'],
     });
 
     if (!agreement) {

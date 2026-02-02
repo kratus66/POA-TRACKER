@@ -6,10 +6,11 @@ import {
   UpdateDateColumn,
   Index,
   ManyToOne,
-  ForeignKey,
+  OneToMany,
 } from 'typeorm';
 import { PoaPeriod } from '../../poa-periods/entities/poa-period.entity';
 import { Program } from '../../programs/entities/program.entity';
+import { Evidence } from '../../evidences/entities/evidence.entity';
 
 @Entity('agreement_activities')
 @Index(['poaPeriodId'])
@@ -45,14 +46,12 @@ export class AgreementActivity {
   status: string;
 
   @ManyToOne(() => PoaPeriod, (poaPeriod) => poaPeriod.activities)
-  @ForeignKey(() => PoaPeriod)
   poaPeriod: PoaPeriod;
 
   @Column()
   poaPeriodId: string;
 
   @ManyToOne(() => Program, (program) => program.agreementActivities)
-  @ForeignKey(() => Program)
   program: Program;
 
   @Column()
@@ -69,4 +68,10 @@ export class AgreementActivity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => Evidence, (evidence) => evidence.activity, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  evidences?: Evidence[];
 }

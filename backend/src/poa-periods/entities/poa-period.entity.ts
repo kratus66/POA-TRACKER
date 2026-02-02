@@ -6,12 +6,13 @@ import {
   UpdateDateColumn,
   Index,
   ManyToOne,
-  ForeignKey,
   OneToMany,
 } from 'typeorm';
 import { Agreement } from '../../agreements/entities/agreement.entity';
 import { User } from '../../users/entities/user.entity';
 import { AgreementActivity } from '../../agreement-activities/entities/agreement-activity.entity';
+import { PoaActivity } from '../../poa-activities/entities/poa-activity.entity';
+import { Review } from '../../reviews/entities/review.entity';
 
 export enum PoaPeriodStatus {
   DRAFT = 'DRAFT',
@@ -41,7 +42,6 @@ export class PoaPeriod {
   status: PoaPeriodStatus;
 
   @ManyToOne(() => Agreement, (agreement) => agreement.poaPeriods)
-  @ForeignKey(() => Agreement)
   agreement: Agreement;
 
   @Column()
@@ -51,7 +51,6 @@ export class PoaPeriod {
   supervisorId?: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @ForeignKey(() => User)
   supervisor?: User;
 
   @Column({ nullable: true, comment: 'Observaciones sobre el POA' })
@@ -59,6 +58,18 @@ export class PoaPeriod {
 
   @OneToMany(() => AgreementActivity, (activity) => activity.poaPeriod)
   activities: AgreementActivity[];
+
+  @OneToMany(() => PoaActivity, (activity) => activity.poaPeriod, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  poaActivities?: PoaActivity[];
+
+  @OneToMany(() => Review, (review) => review.poaPeriod, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  reviews?: Review[];
 
   @CreateDateColumn()
   createdAt: Date;

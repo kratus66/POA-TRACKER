@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { MunicipalitiesService } from './municipalities.service';
-import { CreateMunicipalityDto, MunicipalityFilterDto } from './dtos/municipality.dto';
+import {
+  CreateMunicipalityDto,
+  MunicipalityFilterDto,
+  UpdateMunicipalityDto,
+} from './dtos/municipality.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -67,7 +71,7 @@ export class MunicipalitiesController {
   @ApiResponse({ status: 200, description: 'Municipio actualizado' })
   async update(
     @Param('id') id: string,
-    @Body() updateMunicipalityDto: CreateMunicipalityDto,
+    @Body() updateMunicipalityDto: UpdateMunicipalityDto,
   ) {
     return this.municipalitiesService.update(id, updateMunicipalityDto);
   }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
+import Layout from '@/components/Layout';
 import Link from 'next/link';
 
 interface Municipality {
@@ -93,6 +94,7 @@ export default function AgreementDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePoa, setShowCreatePoa] = useState(false);
   const [newPoaYear, setNewPoaYear] = useState(new Date().getFullYear());
+  const [newPoaNotes, setNewPoaNotes] = useState('');
   const [selectedPoaId, setSelectedPoaId] = useState<string | null>(null);
   const [selectedSupervisorId, setSelectedSupervisorId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -147,15 +149,11 @@ export default function AgreementDetail() {
 
   const fetchSupervisors = async () => {
     try {
-      const response = await apiClient.get('/admin/users');
-      const data = response as any;
-      // Filtrar solo supervisores
-      const supervisorUsers = (data.data || data).filter(
-        (u: User) => u.role === 'SUPERVISOR_POA'
-      );
-      setSupervisors(supervisorUsers);
+      const response = await apiClient.get('/admin/supervisors');
+      setSupervisors(response || []);
     } catch (err) {
       console.error('Error fetching supervisors:', err);
+      setSupervisors([]);
     }
   };
 
@@ -202,16 +200,16 @@ export default function AgreementDetail() {
       await apiClient.post('/poa-periods', {
         year: newPoaYear,
         agreementId,
+        notes: newPoaNotes,
       });
       setNewPoaYear(new Date().getFullYear());
+      setNewPoaNotes('');
       setShowCreatePoa(false);
       await fetchPoaPeriods();
       alert('Vigencia POA creada exitosamente');
     } catch (err: any) {
-      alert(
-        'Error al crear vigencia POA: ' +
-          (err.message || 'Error desconocido')
-      );
+      const errorMessage = err.response?.data?.message || err.message || 'Error desconocido';
+      alert('Error al crear vigencia POA: ' + errorMessage);
     }
   };
 
@@ -338,8 +336,9 @@ export default function AgreementDetail() {
   );
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <Link href="/agreements" className="mb-4 text-primary-600 hover:underline">
+    <Layout>
+      <div className="p-8 max-w-5xl mx-auto">
+        <Link href="/agreements" className="mb-4 text-primary-600 hover:underline">
         ← Volver a Convenios
       </Link>
 
@@ -356,7 +355,9 @@ export default function AgreementDetail() {
           </div>
           <div>
             <p className="text-sm text-gray-600">Departamento</p>
-            <p className="text-lg font-medium">{agreement.municipality.department}</p>
+            <p className="text-lg font-medium">
+              {(agreement.municipality.department as any)?.name || 'N/A'}
+            </p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Vigencia</p>
@@ -409,7 +410,7 @@ export default function AgreementDetail() {
             onSubmit={handleCreatePoaPeriod}
             className="mb-6 bg-white p-4 rounded-lg shadow-md border border-gray-200"
           >
-            <div className="flex gap-4 items-end">
+            <div className="flex gap-4 items-end flex-wrap">
               <div>
                 <label className="block text-sm font-medium mb-1">Año</label>
                 <input
@@ -418,6 +419,16 @@ export default function AgreementDetail() {
                   onChange={(e) => setNewPoaYear(parseInt(e.target.value))}
                   required
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
+                />
+              </div>
+              <div className="flex-1 min-w-xs">
+                <label className="block text-sm font-medium mb-1">Notas</label>
+                <textarea
+                  value={newPoaNotes}
+                  onChange={(e) => setNewPoaNotes(e.target.value)}
+                  placeholder="Agregar notas sobre esta vigencia POA..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
+                  rows={1}
                 />
               </div>
               <div>
@@ -708,5 +719,6 @@ export default function AgreementDetail() {
         )}
       </div>
     </div>
+    </Layout>
   );
 }

@@ -7,10 +7,10 @@ import {
   Index,
   ManyToOne,
   OneToMany,
-  ForeignKey,
 } from 'typeorm';
 import { Municipality } from '../../municipalities/entities/municipality.entity';
 import { PoaPeriod } from '../../poa-periods/entities/poa-period.entity';
+import { Review } from '../../reviews/entities/review.entity';
 
 export enum AgreementStatus {
   ACTIVE = 'ACTIVE',
@@ -47,7 +47,6 @@ export class Agreement {
   description: string;
 
   @ManyToOne(() => Municipality, (municipality) => municipality.agreements)
-  @ForeignKey(() => Municipality)
   municipality: Municipality;
 
   @Column()
@@ -57,6 +56,12 @@ export class Agreement {
     eager: false,
   })
   poaPeriods: PoaPeriod[];
+
+  @OneToMany(() => Review, (review) => review.agreement, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  reviews?: Review[];
 
   @CreateDateColumn()
   createdAt: Date;

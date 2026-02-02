@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: string;
   status: string;
+  rejectionReason?: string;
 }
 
 export interface AuthContextType {
@@ -38,11 +39,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     try {
       setLoading(true);
-      const userData = await apiClient.get('/auth/me');
-      setUser(userData);
-      setError(null);
+      // Intentar recuperar user del localStorage primero
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('access_token');
+      
+      if (storedUser && storedToken) {
+        setUser(JSON.parse(storedUser));
+        setError(null);
+      } else {
+        // Si no hay datos en localStorage, intentar verificar con el backend
+        const userData = await apiClient.get('/auth/me');
+        setUser(userData);
+        setError(null);
+      }
     } catch (err: any) {
       setUser(null);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
     } finally {
       setLoading(false);
     }
@@ -53,7 +66,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       const result = await apiClient.post('/auth/login', { email, password });
-      setUser(result.user);
+      
+      // Guardar token en localStorage
+      if (result.access_token) {
+        localStorage.setItem('access_token', result.access_token);
+      }
+      
+      // Guardar datos del usuario
+      if (result.user) {
+        localStorage.setItem('user', JSON.stringify(result.user));
+        setUser(result.user);
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Error al iniciar sesión';
       setError(errorMessage);
@@ -90,8 +113,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiClient.post('/auth/logout', {});
       setUser(null);
       setError(null);
+      
+      // Limpiar localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
     } catch (err: any) {
       console.error('Error al cerrar sesión:', err);
+      // Limpiar localStorage incluso si hay error
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
     } finally {
       setLoading(false);
     }

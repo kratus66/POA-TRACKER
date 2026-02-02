@@ -10,6 +10,36 @@ const axiosInstance = axios.create({
   withCredentials: true, // Enviar cookies
 });
 
+// Interceptor para agregar token JWT en cada petición
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor para manejar errores de respuesta
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Si es 401, limpiar token y redirigir al login
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const apiClient = {
   get: async (url: string) => {
     const response = await axiosInstance.get(url);

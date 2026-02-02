@@ -84,6 +84,17 @@ export class AdminController {
     return users.map(this.formatUserDto);
   }
 
+  @Get('supervisors')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener supervisores POA' })
+  @ApiResponse({ status: 200, description: 'Lista de supervisores' })
+  async getSupervisors(): Promise<UserDto[]> {
+    const users = await this.usersService.getUsersByRole(UserRole.SUPERVISOR_POA);
+    return users.map(this.formatUserDto);
+  }
+
   private formatUserDto(user: any): UserDto {
     return {
       id: user.id,

@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   Index,
   ManyToOne,
-  ForeignKey,
 } from 'typeorm';
 import { PoaTemplate } from './poa-template.entity';
 import { Program } from '../../programs/entities/program.entity';
@@ -31,14 +30,12 @@ export class PoaTemplateActivity {
   unit: string;
 
   @ManyToOne(() => PoaTemplate, (poaTemplate) => poaTemplate.activities)
-  @ForeignKey(() => PoaTemplate)
   poaTemplate: PoaTemplate;
 
   @Column()
   poaTemplateId: string;
 
   @ManyToOne(() => Program, (program) => program.poaTemplateActivities)
-  @ForeignKey(() => Program)
   program: Program;
 
   @Column()

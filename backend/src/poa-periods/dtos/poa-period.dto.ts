@@ -6,6 +6,7 @@ import {
   IsUUID,
   IsNumber,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { PoaPeriodStatus } from '../entities/poa-period.entity';
 
@@ -62,9 +63,15 @@ export class PoaPeriodFilterDto {
   status?: PoaPeriodStatus;
 
   @ApiProperty({ required: false, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   page?: number;
 
   @ApiProperty({ required: false, default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   limit?: number;
 }
 

@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsUUID, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMunicipalityDto {
@@ -12,10 +13,10 @@ export class CreateMunicipalityDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'Antioquia' })
-  @IsString()
+  @ApiProperty({ example: 'uuid-of-department' })
+  @IsUUID()
   @IsNotEmpty()
-  department: string;
+  departmentId: string;
 }
 
 export class UpdateMunicipalityDto {
@@ -24,10 +25,10 @@ export class UpdateMunicipalityDto {
   @IsOptional()
   name?: string;
 
-  @ApiProperty({ example: 'Antioquia', required: false })
-  @IsString()
+  @ApiProperty({ example: 'uuid-of-department', required: false })
+  @IsUUID()
   @IsOptional()
-  department?: string;
+  departmentId?: string;
 
   @ApiProperty({ required: false })
   @IsBoolean()
@@ -43,13 +44,19 @@ export class MunicipalityFilterDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  department?: string;
+  @IsUUID()
+  departmentId?: string;
 
   @ApiProperty({ required: false, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   page?: number;
 
   @ApiProperty({ required: false, default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   limit?: number;
 }
 

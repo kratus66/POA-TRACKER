@@ -2,13 +2,25 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
+import { DataSource } from 'typeorm';
+import { runSeeder } from './database/seeder';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Middleware
   app.use(cookieParser());
+
+  // Ejecutar seeder en desarrollo
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const dataSource = app.get(DataSource);
+      await runSeeder(dataSource);
+    } catch (error) {
+      console.warn('[Bootstrap] No se pudo ejecutar el seeder:', error.message);
+    }
+  }
 
   // CORS
   app.enableCors({

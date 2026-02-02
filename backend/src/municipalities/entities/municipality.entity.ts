@@ -6,13 +6,15 @@ import {
   UpdateDateColumn,
   Index,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Agreement } from '../../agreements/entities/agreement.entity';
+import { Department } from '../../departments/entities/department.entity';
 
 @Entity('municipalities')
 @Index(['code'])
 @Index(['name'])
-@Index(['department'])
 export class Municipality {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -23,8 +25,12 @@ export class Municipality {
   @Column({ comment: 'Nombre del municipio' })
   name: string;
 
-  @Column({ comment: 'Departamento' })
-  department: string;
+  @Column({ name: 'department_id' })
+  departmentId: string;
+
+  @ManyToOne(() => Department, (department) => department.municipalities)
+  @JoinColumn({ name: 'department_id' })
+  department: Department;
 
   @Column({ default: true })
   active: boolean;

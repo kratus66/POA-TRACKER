@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Municipality } from './entities/municipality.entity';
+import { Department } from '../departments/entities/department.entity';
 import {
   CreateMunicipalityDto,
   UpdateMunicipalityDto,
@@ -13,6 +14,8 @@ export class MunicipalitiesService {
   constructor(
     @InjectRepository(Municipality)
     private municipalityRepository: Repository<Municipality>,
+    @InjectRepository(Department)
+    private departmentRepository: Repository<Department>,
   ) {}
 
   async create(createMunicipalityDto: CreateMunicipalityDto) {
@@ -33,8 +36,23 @@ export class MunicipalitiesService {
   }
 
   async findAll(filterDto: MunicipalityFilterDto) {
-    const { search, department, page = 1, limit = 10 } = filterDto;
-    const query = this.municipalityRepository.createQueryBuilder('m');
+    const { search, departmentId, page = 1, limit = 10 } = filterDto;
+    const query = this.municipalityRepository
+      .createQueryBuilder('m')
+      .leftJoinAndSelect('m.department', 'department');
+
+    if (departmentId) {
+      const dept = await this.departmentRepository.findOne({ where: { id: departmentId } });
+      const totalByDept = await this.municipalityRepository.count({
+        where: { departmentId, active: true },
+      });
+      console.log(
+        `[MunicipalitiesService] departmentId=${departmentId} ` +
+          `exists=${!!dept} ` +
+          `deptName=${dept?.name || 'N/A'} ` +
+          `activeMunicipalities=${totalByDept}`,
+      );
+    }
 
     if (search) {
       query.where('m.name ILIKE :search OR m.code ILIKE :search', {
@@ -42,8 +60,8 @@ export class MunicipalitiesService {
       });
     }
 
-    if (department) {
-      query.andWhere('m.department = :department', { department });
+    if (departmentId) {
+      query.andWhere('m.departmentId = :departmentId', { departmentId });
     }
 
     query.andWhere('m.active = :active', { active: true });
@@ -67,6 +85,7 @@ export class MunicipalitiesService {
   async findById(id: string) {
     const municipality = await this.municipalityRepository.findOne({
       where: { id },
+      relations: ['department'],
     });
 
     if (!municipality) {
@@ -93,13 +112,10 @@ export class MunicipalitiesService {
   }
 
   async getDepartments() {
-    const departments = await this.municipalityRepository
-      .createQueryBuilder('m')
-      .select('DISTINCT m.department', 'department')
-      .where('m.active = :active', { active: true })
-      .orderBy('m.department', 'ASC')
-      .getRawMany();
-
-    return departments.map((d) => d.department);
+    return this.departmentRepository.find({
+      where: { active: true },
+      order: { name: 'ASC' },
+      select: ['id', 'name'],
+    });
   }
 }

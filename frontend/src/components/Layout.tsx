@@ -82,19 +82,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main Content */}
-      <div className="lg:pl-64 flex flex-col flex-1">
+      <div className="lg:pl-64 flex flex-col flex-1 w-full">
         {/* Topbar */}
         <Topbar setSidebarOpen={setSidebarOpen} />
 
         {/* Page Content */}
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+        <main className="flex-1 overflow-auto">
+          <div className="py-4 px-4 sm:px-6 md:px-8">
+            <div className="max-w-7xl">
               {children}
             </div>
           </div>

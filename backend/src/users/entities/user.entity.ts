@@ -5,7 +5,9 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  OneToMany,
 } from 'typeorm';
+import { ActivityTracking } from '../../activity-tracking/entities/activity-tracking.entity';
 
 export enum UserRole {
   ADMIN = 'ADMIN',
@@ -60,4 +62,11 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Relaciones
+  @OneToMany(() => ActivityTracking, (tracking) => tracking.reviewer)
+  activityTrackings?: ActivityTracking[];
+
+  @OneToMany(() => ActivityTracking, (tracking) => tracking.verifier)
+  verifiedTrackings?: ActivityTracking[];
 }

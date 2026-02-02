@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AgreementActivity } from './entities/agreement-activity.entity';
@@ -7,12 +7,18 @@ import {
   UpdateAgreementActivityDto,
   AgreementActivityFilterDto,
 } from './dtos/agreement-activity.dto';
+import { Review, ReviewStatus } from '../reviews/entities/review.entity';
+import { AuditsService } from '../audits/audits.service';
+import { AuditEntityType, AuditAction } from '../audits/entities/audit.entity';
 
 @Injectable()
 export class AgreementActivitiesService {
   constructor(
     @InjectRepository(AgreementActivity)
     private activityRepository: Repository<AgreementActivity>,
+    @InjectRepository(Review)
+    private reviewsRepository: Repository<Review>,
+    private auditsService: AuditsService,
   ) {}
 
   async create(poaPeriodId: string, createActivityDto: CreateAgreementActivityDto) {
@@ -129,5 +135,73 @@ export class AgreementActivitiesService {
     }
 
     return createdActivities;
+  }
+
+  /**
+   * Verificar si una actividad puede ser editada
+   * Solo editable si la revisión está en DRAFT o REOPENED
+   */
+  async canEditActivity(activityId: string): Promise<{ canEdit: boolean; review?: Review }> {
+    const activity = await this.activityRepository.findOne({
+      where: { id: activityId },
+      relations: ['poaPeriod'],
+    });
+
+    if (!activity) {
+      throw new NotFoundException('Actividad no encontrada');
+    }
+
+    // Buscar la revisión activa para este período
+    const review = await this.reviewsRepository.findOne({
+      where: { poaPeriodId: activity.poaPeriodId },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!review) {
+      // Si no hay revisión, la actividad puede editarse
+      return { canEdit: true };
+    }
+
+    const canEdit =
+      review.status === ReviewStatus.DRAFT || review.status === ReviewStatus.REOPENED;
+
+    return { canEdit, review };
+  }
+
+  /**
+   * Actualizar actividad con validación y auditoría
+   */
+  async updateWithAudit(
+    id: string,
+    updateActivityDto: UpdateAgreementActivityDto,
+    userId: string,
+  ): Promise<AgreementActivity> {
+    const activity = await this.findById(id);
+    const oldData = { ...activity };
+
+    // Verificar si puede editarse
+    const { canEdit, review } = await this.canEditActivity(id);
+
+    if (!canEdit && review) {
+      throw new ForbiddenException(
+        `No se puede editar. La revisión está en estado ${review.status}. Debe reabrirse la revisión.`,
+      );
+    }
+
+    // Actualizar actividad
+    Object.assign(activity, updateActivityDto);
+    const updated = await this.activityRepository.save(activity);
+
+    // Registrar en auditoría
+    await this.auditsService.log({
+      entityType: AuditEntityType.AGREEMENT_ACTIVITY,
+      entityId: id,
+      action: AuditAction.UPDATE,
+      userId,
+      oldData: oldData,
+      newData: updated,
+    });
+
+    return updated;
   }
 }

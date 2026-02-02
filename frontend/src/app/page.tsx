@@ -1,19 +1,56 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { apiClient } from '@/lib/api';
 import Layout from '@/components/Layout';
+
+interface DashboardStats {
+  totalPoas: number;
+  completados: number;
+  enProgreso: number;
+  atrasados: number;
+}
 
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPoas: 0,
+    completados: 0,
+    enProgreso: 0,
+    atrasados: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/login');
+    } else if (!loading && isAuthenticated) {
+      fetchDashboardStats();
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoadingStats(true);
+      // Cargar POAs
+      const poasResponse = await apiClient.get('/poa-periods?limit=1000');
+      const poas = poasResponse?.data || [];
+      
+      setStats({
+        totalPoas: poas.length,
+        completados: 0, // Por ahora
+        enProgreso: poas.length,
+        atrasados: 0, // Por ahora
+      });
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -32,13 +69,13 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <div>
+        <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
             Bienvenido a POA Tracker
           </h1>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-1 text-sm text-gray-600">
             Sistema de seguimiento de Plan Operativo Anual
           </p>
         </div>
@@ -68,7 +105,9 @@ export default function Home() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Total POAs
                     </dt>
-                    <dd className="text-lg font-semibold text-gray-900">0</dd>
+                    <dd className="text-lg font-semibold text-gray-900">
+                      {loadingStats ? '...' : stats.totalPoas}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -98,7 +137,9 @@ export default function Home() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Completados
                     </dt>
-                    <dd className="text-lg font-semibold text-gray-900">0</dd>
+                    <dd className="text-lg font-semibold text-gray-900">
+                      {loadingStats ? '...' : stats.completados}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -128,7 +169,9 @@ export default function Home() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       En Progreso
                     </dt>
-                    <dd className="text-lg font-semibold text-gray-900">0</dd>
+                    <dd className="text-lg font-semibold text-gray-900">
+                      {loadingStats ? '...' : stats.enProgreso}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -158,7 +201,9 @@ export default function Home() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Atrasados
                     </dt>
-                    <dd className="text-lg font-semibold text-gray-900">0</dd>
+                    <dd className="text-lg font-semibold text-gray-900">
+                      {loadingStats ? '...' : stats.atrasados}
+                    </dd>
                   </dl>
                 </div>
               </div>

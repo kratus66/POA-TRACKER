@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
+import Layout from '@/components/Layout';
 import Link from 'next/link';
 
 interface Program {
@@ -161,7 +162,8 @@ export default function PoaTemplatesPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Plantillas POA</h1>
         <p className="text-gray-600">Crea plantillas y organiza actividades por programa</p>
@@ -384,5 +386,6 @@ export default function PoaTemplatesPage() {
         </Link>
       </div>
     </div>
+    </Layout>
   );
 }

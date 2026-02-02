@@ -13,6 +13,7 @@ import { AgreementActivitiesService } from './agreement-activities.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import {
   CreateAgreementActivityDto,
@@ -67,8 +68,9 @@ export class AgreementActivitiesController {
   async update(
     @Param('id') id: string,
     @Body() updateActivityDto: UpdateAgreementActivityDto,
+    @CurrentUser() user: any,
   ) {
-    return this.activityService.update(id, updateActivityDto);
+    return this.activityService.updateWithAudit(id, updateActivityDto, user.id);
   }
 
   @Delete(':id')

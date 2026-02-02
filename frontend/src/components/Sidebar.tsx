@@ -157,6 +157,44 @@ const navigation = [
       </svg>
     ),
   },
+  {
+    name: 'Revisión Semestral',
+    href: '/reviews',
+    icon: (
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+        />
+      </svg>
+    ),
+  },
+  {
+    name: 'Reportes',
+    href: '/reports',
+    icon: (
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4a1 1 0 011-1h16a1 1 0 011 1v2.757a1 1 0 01-.406.82l-5.753 4.752a1 1 0 00-.168 1.552l3.827 3.827a1 1 0 01-.282 1.604A6 6 0 006 21c-1.657 0-3-1.343-3-3V4z"
+        />
+      </svg>
+    ),
+  },
 ];
 
 const adminNavigation = [

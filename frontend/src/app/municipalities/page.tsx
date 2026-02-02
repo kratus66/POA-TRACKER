@@ -4,15 +4,24 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
+import Layout from '@/components/Layout';
 import Link from 'next/link';
 
 interface Municipality {
   id: string;
   code: string;
   name: string;
-  department: string;
+  department: {
+    id: string;
+    name: string;
+  };
   active: boolean;
   createdAt: string;
+}
+
+interface Department {
+  id: string;
+  name: string;
 }
 
 interface ApiResponse {
@@ -29,7 +38,7 @@ export default function Municipalities() {
   const router = useRouter();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -40,7 +49,7 @@ export default function Municipalities() {
   const [newMunicipality, setNewMunicipality] = useState({
     code: '',
     name: '',
-    department: '',
+    departmentId: '',
   });
 
   useEffect(() => {
@@ -59,7 +68,7 @@ export default function Municipalities() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await apiClient.get('/municipalities/departments');
+      const response = await apiClient.get('/departments');
       setDepartments(response);
     } catch (err) {
       console.error('Error fetching departments:', err);
@@ -71,7 +80,7 @@ export default function Municipalities() {
       setLoading(true);
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-      if (selectedDepartment) params.append('department', selectedDepartment);
+      if (selectedDepartment) params.append('departmentId', selectedDepartment);
       params.append('page', page.toString());
       params.append('limit', '10');
 
@@ -91,7 +100,7 @@ export default function Municipalities() {
     e.preventDefault();
     try {
       await apiClient.post('/municipalities', newMunicipality);
-      setNewMunicipality({ code: '', name: '', department: '' });
+      setNewMunicipality({ code: '', name: '', departmentId: '' });
       setShowCreateForm(false);
       setPage(1);
       await fetchMunicipalities();
@@ -106,7 +115,8 @@ export default function Municipalities() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <Layout>
+      <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Municipios</h1>
         <p className="text-gray-600">Gestiona los municipios del sistema</p>
@@ -161,19 +171,24 @@ export default function Municipalities() {
                   required
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
                 />
-                <input
-                  type="text"
-                  placeholder="Departamento"
-                  value={newMunicipality.department}
+                <select
+                  value={newMunicipality.departmentId}
                   onChange={(e) =>
                     setNewMunicipality({
                       ...newMunicipality,
-                      department: e.target.value,
+                      departmentId: e.target.value,
                     })
                   }
                   required
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
-                />
+                >
+                  <option value="">Selecciona un departamento</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-2">
                 <button
@@ -217,8 +232,8 @@ export default function Municipalities() {
         >
           <option value="">Todos los departamentos</option>
           {departments.map((dept) => (
-            <option key={dept} value={dept}>
-              {dept}
+            <option key={dept.id} value={dept.id}>
+              {dept.name}
             </option>
           ))}
         </select>
@@ -248,7 +263,7 @@ export default function Municipalities() {
               <tr key={municipality.id} className="border-b hover:bg-gray-50">
                 <td className="px-6 py-3 text-sm">{municipality.code}</td>
                 <td className="px-6 py-3 text-sm font-medium">{municipality.name}</td>
-                <td className="px-6 py-3 text-sm">{municipality.department}</td>
+                <td className="px-6 py-3 text-sm">{municipality.department?.name}</td>
                 <td className="px-6 py-3 text-sm">
                   <Link
                     href={`/agreements?municipality=${municipality.id}`}
@@ -290,5 +305,6 @@ export default function Municipalities() {
         </button>
       </div>
     </div>
+    </Layout>
   );
 }
