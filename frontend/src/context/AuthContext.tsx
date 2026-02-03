@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient } from '@/lib/api';
 
 export interface User {
@@ -31,14 +31,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Verificar autenticación al montar
+  // Verificar autenticación al montar (solo una vez)
   useEffect(() => {
+    // Solo ejecutar en el cliente
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
+    const checkAuth = async () => {
+      try {
+        // Intentar recuperar user del localStorage primero
+        const storedUser = localStorage.getItem('user');
+        const storedToken = localStorage.getItem('access_token');
+        
+        if (storedUser && storedToken) {
+          setUser(JSON.parse(storedUser));
+          setError(null);
+        }
+        // NO intentar verificar con backend si no hay token
+      } catch (err: any) {
+        setUser(null);
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     checkAuth();
-  }, []);
+  }, []); // Array vacío para ejecutar solo una vez al montar
 
   const checkAuth = useCallback(async () => {
+    // Solo ejecutar en el cliente
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
-      setLoading(true);
       // Intentar recuperar user del localStorage primero
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('access_token');
@@ -54,27 +84,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       setUser(null);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-    } finally {
-      setLoading(false);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+      }
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
       const result = await apiClient.post('/auth/login', { email, password });
       
       // Guardar token en localStorage
-      if (result.access_token) {
+      if (result.access_token && typeof window !== 'undefined') {
         localStorage.setItem('access_token', result.access_token);
       }
       
       // Guardar datos del usuario
       if (result.user) {
-        localStorage.setItem('user', JSON.stringify(result.user));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(result.user));
+        }
         setUser(result.user);
       }
     } catch (err: any) {
@@ -84,9 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const register = async (firstName: string, lastName: string, email: string, password: string, role: string) => {
+  const register = useCallback(async (firstName: string, lastName: string, email: string, password: string, role: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -105,9 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       setLoading(true);
       await apiClient.post('/auth/logout', {});
@@ -115,31 +147,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       
       // Limpiar localStorage
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+      }
     } catch (err: any) {
       console.error('Error al cerrar sesión:', err);
       // Limpiar localStorage incluso si hay error
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    isAuthenticated: !!user,
+    login,
+    register,
+    logout,
+    checkAuth,
+    error,
+  }), [user, loading, error]); // Solo estados, NO funciones
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated: !!user,
-        login,
-        register,
-        logout,
-        checkAuth,
-        error,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

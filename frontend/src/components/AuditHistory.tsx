@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface AuditEntry {
   id: string;
@@ -30,11 +30,7 @@ export const AuditHistory: React.FC<AuditHistoryProps> = ({
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchAuditHistory();
-  }, [entityType, entityId]);
-
-  const fetchAuditHistory = async () => {
+  const fetchAuditHistory = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/audits/entity/${entityType}/${entityId}?limit=${limit}`,
@@ -54,7 +50,11 @@ export const AuditHistory: React.FC<AuditHistoryProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [entityType, entityId, limit]);
+
+  useEffect(() => {
+    fetchAuditHistory();
+  }, [entityType, entityId, limit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getActionColor = (action: string): string => {
     switch (action) {

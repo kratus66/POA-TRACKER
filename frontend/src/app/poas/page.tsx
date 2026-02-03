@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/Layout';
 
 interface Agreement {
@@ -31,12 +31,7 @@ export default function POAsPage() {
     notes: '',
   });
 
-  useEffect(() => {
-    fetchPOAs();
-    fetchAgreements();
-  }, []);
-
-  const fetchPOAs = async () => {
+  const fetchPOAs = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('access_token');
@@ -65,9 +60,9 @@ export default function POAsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAgreements = async () => {
+  const fetchAgreements = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) return;
@@ -87,7 +82,12 @@ export default function POAsPage() {
     } catch (err) {
       console.error('Error al cargar convenios:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchPOAs();
+    fetchAgreements();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

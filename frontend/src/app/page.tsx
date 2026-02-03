@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
@@ -24,15 +24,7 @@ export default function Home() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/login');
-    } else if (!loading && isAuthenticated) {
-      fetchDashboardStats();
-    }
-  }, [isAuthenticated, loading]);
-
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setLoadingStats(true);
       // Cargar POAs
@@ -50,7 +42,18 @@ export default function Home() {
     } finally {
       setLoadingStats(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    
+    if (!loading && isAuthenticated) {
+      fetchDashboardStats();
+    }
+  }, [isAuthenticated, loading, router]); // Removido fetchDashboardStats de las dependencias
 
   if (loading) {
     return (

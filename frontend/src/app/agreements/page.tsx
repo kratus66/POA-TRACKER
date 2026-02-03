@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/api';
@@ -81,14 +81,10 @@ export default function Agreements() {
   }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  useEffect(() => {
     fetchAgreements();
   }, [page, selectedMunicipality, selectedDepartment, selectedStatus]);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const response = await apiClient.get('/municipalities/departments');
       console.log('Departments response:', response);
@@ -98,7 +94,11 @@ export default function Agreements() {
       setError(`Error al cargar departamentos: ${err}`);
       setDepartments([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchMunicipalitiesByDepartment = async (departmentId: string) => {
     try {

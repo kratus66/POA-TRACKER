@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -32,11 +32,7 @@ export default function AdminUsers() {
   }, [user, router]);
 
   // Cargar usuarios pendientes
-  useEffect(() => {
-    loadPendingUsers();
-  }, []);
-
-  const loadPendingUsers = async () => {
+  const loadPendingUsers = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiClient.get('/admin/users/pending');
@@ -46,7 +42,11 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadPendingUsers();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApprove = async (userId: string) => {
     try {

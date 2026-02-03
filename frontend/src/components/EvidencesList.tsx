@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface Evidence {
   id: string;
@@ -28,11 +28,7 @@ export const EvidencesList: React.FC<EvidencesListProps> = ({
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('');
 
-  useEffect(() => {
-    fetchEvidences();
-  }, [reviewId, activityId]);
-
-  const fetchEvidences = async () => {
+  const fetchEvidences = useCallback(async () => {
     try {
       const url = activityId
         ? `/api/evidences/review-activity/${reviewId}/${activityId}`
@@ -53,7 +49,11 @@ export const EvidencesList: React.FC<EvidencesListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [reviewId, activityId]);
+
+  useEffect(() => {
+    fetchEvidences();
+  }, [reviewId, activityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async (evidenceId: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar esta evidencia?')) return;
