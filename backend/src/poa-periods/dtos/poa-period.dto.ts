@@ -22,6 +22,11 @@ export class CreatePoaPeriodDto {
   agreementId: string;
 
   @ApiProperty({ required: false })
+  @IsUUID()
+  @IsOptional()
+  supervisorId?: string;
+
+  @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
   notes?: string;

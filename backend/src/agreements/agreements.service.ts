@@ -1,7 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Agreement } from './entities/agreement.entity';
+import { Program } from '../programs/entities/program.entity';
 import {
   CreateAgreementDto,
   UpdateAgreementDto,
@@ -17,6 +18,8 @@ export class AgreementsService {
   constructor(
     @InjectRepository(Agreement)
     private agreementRepository: Repository<Agreement>,
+    @InjectRepository(Program)
+    private programRepository: Repository<Program>,
     private municipalitiesService: MunicipalitiesService,
     private poaPeriodsService: PoaPeriodsService,
     private poaTemplatesService: PoaTemplatesService,
@@ -51,6 +54,19 @@ export class AgreementsService {
     }
 
     const agreement = this.agreementRepository.create(createAgreementDto);
+
+    if (createAgreementDto.programIds?.length) {
+      const programs = await this.programRepository.findBy({
+        id: In(createAgreementDto.programIds),
+      });
+
+      if (programs.length !== createAgreementDto.programIds.length) {
+        throw new BadRequestException('Uno o más programas no existen');
+      }
+
+      agreement.programs = programs;
+    }
+
     return this.agreementRepository.save(agreement);
   }
 
@@ -61,7 +77,8 @@ export class AgreementsService {
     const query = this.agreementRepository
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.municipality', 'm')
-      .leftJoinAndSelect('m.department', 'd');
+      .leftJoinAndSelect('m.department', 'd')
+      .leftJoinAndSelect('a.programs', 'p');
 
     if (municipalityId) {
       query.where('a.municipalityId = :municipalityId', { municipalityId });
@@ -94,7 +111,12 @@ export class AgreementsService {
   async findById(id: string) {
     const agreement = await this.agreementRepository.findOne({
       where: { id },
-      relations: ['municipality', 'municipality.department', 'poaPeriods'],
+      relations: [
+        'municipality',
+        'municipality.department',
+        'poaPeriods',
+        'programs',
+      ],
     });
 
     if (!agreement) {
@@ -107,10 +129,22 @@ export class AgreementsService {
   async update(id: string, updateAgreementDto: UpdateAgreementDto) {
     const agreement = await this.findById(id);
 
-    if (
-      updateAgreementDto.startDate &&
-      updateAgreementDto.endDate
-    ) {
+    if (updateAgreementDto.municipalityId) {
+      await this.municipalitiesService.findById(
+        updateAgreementDto.municipalityId,
+      );
+      agreement.municipalityId = updateAgreementDto.municipalityId;
+    }
+
+    if (updateAgreementDto.startDate) {
+      agreement.startDate = new Date(updateAgreementDto.startDate);
+    }
+
+    if (updateAgreementDto.endDate) {
+      agreement.endDate = new Date(updateAgreementDto.endDate);
+    }
+
+    if (updateAgreementDto.startDate && updateAgreementDto.endDate) {
       const startDate = new Date(updateAgreementDto.startDate);
       const endDate = new Date(updateAgreementDto.endDate);
 
@@ -121,7 +155,27 @@ export class AgreementsService {
       }
     }
 
-    await this.agreementRepository.update(id, updateAgreementDto);
+    if (updateAgreementDto.status) {
+      agreement.status = updateAgreementDto.status;
+    }
+
+    if (updateAgreementDto.description !== undefined) {
+      agreement.description = updateAgreementDto.description;
+    }
+
+    if (updateAgreementDto.programIds) {
+      const programs = await this.programRepository.findBy({
+        id: In(updateAgreementDto.programIds),
+      });
+
+      if (programs.length !== updateAgreementDto.programIds.length) {
+        throw new BadRequestException('Uno o más programas no existen');
+      }
+
+      agreement.programs = programs;
+    }
+
+    await this.agreementRepository.save(agreement);
 
     return this.findById(id);
   }

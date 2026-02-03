@@ -7,10 +7,10 @@ export class CreateProgramDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'Programa de apoyo a ciudadanos de bajos ingresos' })
+  @ApiProperty({ example: 'Programa de apoyo a ciudadanos de bajos ingresos', required: false })
   @IsString()
-  @IsNotEmpty()
-  description: string;
+  @IsOptional()
+  description?: string;
 }
 
 export class UpdateProgramDto {

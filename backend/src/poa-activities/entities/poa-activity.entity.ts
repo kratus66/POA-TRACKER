@@ -12,6 +12,7 @@ import {
 import { PoaPeriod } from '../../poa-periods/entities/poa-period.entity';
 import { Program } from '../../programs/entities/program.entity';
 import { Validation } from '../../validations/entities/validation.entity';
+import { PoaTheme } from '../../poa-themes/entities/poa-theme.entity';
 
 export enum ReviewFrequency {
   SEMESTRAL = 'SEMESTRAL',
@@ -22,6 +23,7 @@ export enum ReviewFrequency {
 @Entity('poa_activities')
 @Index(['poaPeriodId'])
 @Index(['programId'])
+@Index(['themeId'])
 export class PoaActivity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -78,6 +80,16 @@ export class PoaActivity {
   })
   @JoinColumn({ name: 'programId' })
   program?: Program;
+
+  @ManyToOne(() => PoaTheme, (theme) => theme.poaActivities, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'themeId' })
+  theme?: PoaTheme;
+
+  @Column({ nullable: true, comment: 'ID del tema POA' })
+  themeId?: string;
 
   @OneToMany(() => Validation, (validation) => validation.activity, {
     cascade: true,

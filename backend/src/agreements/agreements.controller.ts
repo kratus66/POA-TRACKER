@@ -15,6 +15,7 @@ import {
   CreateAgreementDto,
   AgreementFilterDto,
   AssignSupervisorDto,
+  UpdateAgreementDto,
 } from './dtos/agreement.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -71,7 +72,7 @@ export class AgreementsController {
   @ApiResponse({ status: 200, description: 'Convenio actualizado' })
   async update(
     @Param('id') id: string,
-    @Body() updateAgreementDto: CreateAgreementDto,
+    @Body() updateAgreementDto: UpdateAgreementDto,
   ) {
     return this.agreementsService.update(id, updateAgreementDto);
   }

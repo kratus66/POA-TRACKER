@@ -6,13 +6,16 @@ import {
   UpdateDateColumn,
   Index,
   ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { PoaTemplate } from './poa-template.entity';
 import { Program } from '../../programs/entities/program.entity';
+import { PoaTheme } from '../../poa-themes/entities/poa-theme.entity';
 
 @Entity('poa_template_activities')
 @Index(['poaTemplateId'])
 @Index(['programId'])
+@Index(['themeId'])
 export class PoaTemplateActivity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -40,6 +43,16 @@ export class PoaTemplateActivity {
 
   @Column()
   programId: string;
+
+  @ManyToOne(() => PoaTheme, (theme) => theme.poaTemplateActivities, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'themeId' })
+  theme?: PoaTheme;
+
+  @Column({ nullable: true, comment: 'ID del tema POA' })
+  themeId?: string;
 
   @CreateDateColumn()
   createdAt: Date;

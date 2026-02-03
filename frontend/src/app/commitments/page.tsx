@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Commitment, CommitmentStatus, ResponsibleRole } from '@/lib/types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { apiClient } from '@/lib/api';
+import {
+  Commitment,
+  CommitmentStatus,
+  CommitmentResponsibleRole,
+} from '@/lib/types';
 
 const statusColors = {
   OPEN: 'bg-yellow-100 text-yellow-800',
@@ -19,7 +21,7 @@ const statusLabels = {
   OVERDUE: 'Vencido',
 };
 
-const roleLabels = {
+const roleLabels: Record<CommitmentResponsibleRole, string> = {
   MUNICIPAL_TEAM: 'Equipo Municipal',
   PROGRAM_COORDINATOR: 'Coordinador de Programa',
   REGIONAL_MANAGER: 'Coordinador Regional',
@@ -34,22 +36,13 @@ export default function CommitmentsPage() {
 
   useEffect(() => {
     fetchCommitments();
-  }, [filterStatus, filterRole]);
+  }, []);
 
   const fetchCommitments = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const params: any = {};
-      if (filterStatus) params.status = filterStatus;
-      if (filterRole) params.responsibleRole = filterRole;
-
-      const response = await axios.get(`${API_URL}/commitments`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params,
-      });
-
-      setCommitments(response.data);
+      const response = await apiClient.get('/commitments');
+      setCommitments(response || []);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar compromisos');
@@ -63,17 +56,44 @@ export default function CommitmentsPage() {
     if (!confirm('¿Estás seguro de cerrar este compromiso?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.patch(
-        `${API_URL}/commitments/${id}/close`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.patch(`/commitments/${id}/close`, {});
       fetchCommitments();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error al cerrar compromiso');
     }
   };
+
+  const displayCommitments = useMemo(() => {
+    const now = new Date();
+
+    const withStatus = commitments.map((commitment) => {
+      const dueDate = new Date(commitment.dueDate);
+      const isOverdue =
+        commitment.status === CommitmentStatus.OPEN && dueDate < now;
+
+      return {
+        ...commitment,
+        displayStatus: isOverdue ? 'OVERDUE' : commitment.status,
+      };
+    });
+
+    return withStatus.filter((commitment) => {
+      if (filterStatus) {
+        if (filterStatus === 'OVERDUE') {
+          return commitment.displayStatus === 'OVERDUE';
+        }
+        if (commitment.displayStatus !== filterStatus) {
+          return false;
+        }
+      }
+
+      if (filterRole && commitment.responsibleRole !== filterRole) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [commitments, filterRole, filterStatus]);
 
   if (loading) {
     return (
@@ -144,7 +164,7 @@ export default function CommitmentsPage() {
 
         {/* Compromisos List */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {commitments.length === 0 ? (
+          {displayCommitments.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               No se encontraron compromisos
             </div>
@@ -174,17 +194,21 @@ export default function CommitmentsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {commitments.map((commitment) => (
+                  {displayCommitments.map((commitment: any) => (
                     <tr key={commitment.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{commitment.title}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          Compromiso #{commitment.id.slice(0, 8)}
+                        </div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">
                           {commitment.description}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex text-xs font-semibold px-2 py-1 rounded-full ${statusColors[commitment.status]}`}>
-                          {statusLabels[commitment.status]}
+                        <span
+                          className={`inline-flex text-xs font-semibold px-2 py-1 rounded-full ${statusColors[commitment.displayStatus]}`}
+                        >
+                          {statusLabels[commitment.displayStatus]}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

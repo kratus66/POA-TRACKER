@@ -7,10 +7,13 @@ import {
   Index,
   ManyToOne,
   OneToMany,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Municipality } from '../../municipalities/entities/municipality.entity';
 import { PoaPeriod } from '../../poa-periods/entities/poa-period.entity';
 import { Review } from '../../reviews/entities/review.entity';
+import { Program } from '../../programs/entities/program.entity';
 
 export enum AgreementStatus {
   ACTIVE = 'ACTIVE',
@@ -62,6 +65,10 @@ export class Agreement {
     onDelete: 'CASCADE',
   })
   reviews?: Review[];
+
+  @ManyToMany(() => Program, { eager: true })
+  @JoinTable({ name: 'agreement_programs' })
+  programs?: Program[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -14,13 +14,16 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import { EvidencesService } from './evidences.service';
 import { CreateEvidenceDto, UpdateEvidenceDto, BulkUploadEvidencesDto } from './dtos/create-evidence.dto';
 import { Evidence, DocumentType } from './entities/evidence.entity';
 
 @Controller('evidences')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class EvidencesController {
   constructor(private evidencesService: EvidencesService) {}
 
@@ -29,6 +32,7 @@ export class EvidencesController {
    * Crear una evidencia (sin archivo físico, solo referencia)
    */
   @Post()
+  @Roles(UserRole.USER, UserRole.ADMIN)
   async create(
     @Body() createEvidenceDto: CreateEvidenceDto,
     @CurrentUser() user: any,
@@ -41,6 +45,7 @@ export class EvidencesController {
    * Crear múltiples evidencias
    */
   @Post('bulk')
+  @Roles(UserRole.USER, UserRole.ADMIN)
   async bulkUpload(
     @Body() bulkUploadDto: BulkUploadEvidencesDto,
     @CurrentUser() user: any,
@@ -60,6 +65,7 @@ export class EvidencesController {
       limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
     }),
   )
+  @Roles(UserRole.USER, UserRole.ADMIN)
   async uploadFile(
     @UploadedFile() file: any,
     @Body() body: { reviewId: string; activityId: string; description?: string },
@@ -168,6 +174,7 @@ export class EvidencesController {
    * Actualizar descripción o tipo de documento
    */
   @Patch(':id')
+  @Roles(UserRole.USER, UserRole.ADMIN)
   async update(
     @Param('id') id: string,
     @Body() updateEvidenceDto: UpdateEvidenceDto,
@@ -180,6 +187,7 @@ export class EvidencesController {
    * Eliminación suave (soft delete)
    */
   @Delete(':id')
+  @Roles(UserRole.USER, UserRole.ADMIN)
   async softDelete(@Param('id') id: string): Promise<{ success: boolean; message: string }> {
     await this.evidencesService.softDelete(id);
     return { success: true, message: 'Evidencia eliminada' };
@@ -190,6 +198,7 @@ export class EvidencesController {
    * Eliminación permanente (solo admin)
    */
   @Delete('hard/:id')
+  @Roles(UserRole.ADMIN)
   async hardDelete(@Param('id') id: string): Promise<{ success: boolean; message: string }> {
     await this.evidencesService.hardDelete(id);
     return { success: true, message: 'Evidencia eliminada permanentemente' };

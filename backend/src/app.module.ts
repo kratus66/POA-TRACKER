@@ -19,6 +19,9 @@ import { PoaActivitiesModule } from './poa-activities/poa-activities.module';
 import { ReportsModule } from './reports/reports.module';
 import { ActivityTrackingModule } from './activity-tracking/activity-tracking.module';
 import { EvidencesModule } from './evidences/evidences.module';
+import { PoaThemesModule } from './poa-themes/poa-themes.module';
+import { CommitmentsModule } from './commitments/commitments.module';
+import { SeederModule } from './seeders/seeder.module';
 import { User } from './users/entities/user.entity';
 import { AuditLog } from './audit/entities/audit-log.entity';
 import { Department } from './departments/entities/department.entity';
@@ -35,6 +38,8 @@ import { Validation } from './validations/entities/validation.entity';
 import { ActivityTracking } from './activity-tracking/entities/activity-tracking.entity';
 import { Evidence } from './evidences/entities/evidence.entity';
 import { Audit } from './audits/entities/audit.entity';
+import { PoaTheme } from './poa-themes/entities/poa-theme.entity';
+import { Commitment } from './commitments/entities/commitment.entity';
 
 @Module({
   imports: [
@@ -69,6 +74,8 @@ import { Audit } from './audits/entities/audit.entity';
         ActivityTracking,
         Evidence,
         Audit,
+        PoaTheme,
+        Commitment,
       ],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',
@@ -84,6 +91,7 @@ import { Audit } from './audits/entities/audit.entity';
     AgreementsModule,
     PoaPeriodsModule,
     ProgramsModule,
+    PoaThemesModule,
     PoaTemplatesModule,
     AgreementActivitiesModule,
     ReviewsModule,
@@ -93,6 +101,8 @@ import { Audit } from './audits/entities/audit.entity';
     ActivityTrackingModule,
     EvidencesModule,
     AuditsModule,
+    CommitmentsModule,
+    SeederModule,
   ],
 })
 export class AppModule {}

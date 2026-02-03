@@ -7,14 +7,18 @@ import {
   Index,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { PoaPeriod } from '../../poa-periods/entities/poa-period.entity';
 import { Program } from '../../programs/entities/program.entity';
 import { Evidence } from '../../evidences/entities/evidence.entity';
+import { PoaTheme } from '../../poa-themes/entities/poa-theme.entity';
+import { Commitment } from '../../commitments/entities/commitment.entity';
 
 @Entity('agreement_activities')
 @Index(['poaPeriodId'])
 @Index(['programId'])
+@Index(['themeId'])
 export class AgreementActivity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -57,6 +61,16 @@ export class AgreementActivity {
   @Column()
   programId: string;
 
+  @ManyToOne(() => PoaTheme, (theme) => theme.agreementActivities, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'themeId' })
+  theme?: PoaTheme;
+
+  @Column({ nullable: true, comment: 'ID del tema POA' })
+  themeId?: string;
+
   @Column({
     nullable: true,
     comment: 'ID de la actividad de plantilla original',
@@ -74,4 +88,10 @@ export class AgreementActivity {
     onDelete: 'CASCADE',
   })
   evidences?: Evidence[];
+
+  @OneToMany(() => Commitment, (commitment) => commitment.agreementActivity, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  commitments?: Commitment[];
 }

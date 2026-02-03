@@ -7,6 +7,7 @@ import {
   IsUUID,
   IsDateString,
   IsNumber,
+  IsArray,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AgreementStatus } from '../entities/agreement.entity';
@@ -42,6 +43,11 @@ export class CreateAgreementDto {
   @IsUUID()
   @IsNotEmpty()
   municipalityId: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsArray()
+  @IsOptional()
+  programIds?: string[];
 }
 
 export class UpdateAgreementDto {
@@ -64,6 +70,16 @@ export class UpdateAgreementDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({ required: false })
+  @IsUUID()
+  @IsOptional()
+  municipalityId?: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsArray()
+  @IsOptional()
+  programIds?: string[];
 }
 
 export class AssignSupervisorDto {
@@ -123,6 +139,10 @@ export class AgreementResponseDto {
       name: string;
     };
   };
+  programs?: {
+    id: string;
+    name: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }

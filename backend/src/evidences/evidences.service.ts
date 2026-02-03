@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Evidence } from './entities/evidence.entity';
 import { CreateEvidenceDto, UpdateEvidenceDto, BulkUploadEvidencesDto } from './dtos/create-evidence.dto';
-import { Review } from '../reviews/entities/review.entity';
+import { Review, ReviewStatus } from '../reviews/entities/review.entity';
 import { AgreementActivity } from '../agreement-activities/entities/agreement-activity.entity';
 
 @Injectable()
@@ -17,14 +17,22 @@ export class EvidencesService {
     private activitiesRepository: Repository<AgreementActivity>,
   ) {}
 
-  async create(createEvidenceDto: CreateEvidenceDto, userId: string): Promise<Evidence> {
-    // Validar que existe la revisión
-    const review = await this.reviewsRepository.findOne({
-      where: { id: createEvidenceDto.reviewId },
-    });
+  private async assertReviewOpen(reviewId: string): Promise<Review> {
+    const review = await this.reviewsRepository.findOne({ where: { id: reviewId } });
+
     if (!review) {
       throw new NotFoundException('Review no encontrada');
     }
+
+    if (review.status === ReviewStatus.CLOSED) {
+      throw new BadRequestException('La revisión está cerrada');
+    }
+
+    return review;
+  }
+
+  async create(createEvidenceDto: CreateEvidenceDto, userId: string): Promise<Evidence> {
+    await this.assertReviewOpen(createEvidenceDto.reviewId);
 
     // Validar que existe la actividad
     const activity = await this.activitiesRepository.findOne({
@@ -121,6 +129,8 @@ export class EvidencesService {
   async update(id: string, updateEvidenceDto: UpdateEvidenceDto): Promise<Evidence> {
     const evidence = await this.findById(id);
 
+    await this.assertReviewOpen(evidence.reviewId);
+
     Object.assign(evidence, updateEvidenceDto);
 
     return this.evidencesRepository.save(evidence);
@@ -128,6 +138,8 @@ export class EvidencesService {
 
   async softDelete(id: string): Promise<void> {
     const evidence = await this.findById(id);
+
+    await this.assertReviewOpen(evidence.reviewId);
 
     evidence.isActive = false;
     evidence.deletedAt = new Date();
@@ -137,6 +149,7 @@ export class EvidencesService {
 
   async hardDelete(id: string): Promise<void> {
     const evidence = await this.findById(id);
+    await this.assertReviewOpen(evidence.reviewId);
     await this.evidencesRepository.remove(evidence);
   }
 

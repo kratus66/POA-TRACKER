@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Agreement } from './entities/agreement.entity';
+import { Program } from '../programs/entities/program.entity';
 import { AgreementsController } from './agreements.controller';
 import { AgreementsService } from './agreements.service';
 import { MunicipalitiesModule } from '../municipalities/municipalities.module';
@@ -10,7 +11,7 @@ import { AgreementActivitiesModule } from '../agreement-activities/agreement-act
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Agreement]),
+    TypeOrmModule.forFeature([Agreement, Program]),
     MunicipalitiesModule,
     PoaPeriodsModule,
     PoaTemplatesModule,

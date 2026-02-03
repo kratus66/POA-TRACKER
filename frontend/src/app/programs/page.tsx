@@ -73,14 +73,19 @@ export default function Programs() {
   const handleCreateProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/programs', newProgram);
+      const programData = {
+        name: newProgram.name.trim(),
+        description: newProgram.description.trim() || newProgram.name.trim(),
+      };
+      await apiClient.post('/programs', programData);
       setNewProgram({ name: '', description: '' });
       setShowCreateForm(false);
       setPage(1);
       await fetchPrograms();
       alert('Programa creado exitosamente');
     } catch (err: any) {
-      alert('Error al crear programa: ' + (err.message || 'Error desconocido'));
+      console.error('Error creating program:', err);
+      alert('Error al crear programa: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
     }
   };
 

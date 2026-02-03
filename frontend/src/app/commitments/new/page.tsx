@@ -1,26 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import { ResponsibleRole } from '@/lib/types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { apiClient } from '@/lib/api';
+import { CommitmentResponsibleRole } from '@/lib/types';
 
 export default function NewCommitmentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
 
+  const preselectedReviewId = searchParams.get('reviewCycleId') || '';
+  const preselectedActivityId = searchParams.get('agreementActivityId') || '';
+
   const [formData, setFormData] = useState({
-    title: '',
     description: '',
-    responsibleRole: ResponsibleRole.MUNICIPAL_TEAM,
+    responsibleRole: CommitmentResponsibleRole.MUNICIPAL_TEAM,
     dueDate: '',
-    reviewId: '',
-    activityId: '',
+    reviewCycleId: preselectedReviewId,
+    agreementActivityId: preselectedActivityId,
   });
 
   useEffect(() => {
@@ -28,18 +29,15 @@ export default function NewCommitmentPage() {
   }, []);
 
   useEffect(() => {
-    if (formData.reviewId) {
-      fetchActivities(formData.reviewId);
+    if (formData.reviewCycleId) {
+      fetchActivities(formData.reviewCycleId);
     }
-  }, [formData.reviewId]);
+  }, [formData.reviewCycleId]);
 
   const fetchReviews = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/reviews`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setReviews(response.data);
+      const response = await apiClient.get('/reviews');
+      setReviews(response || []);
     } catch (err) {
       console.error('Error fetching reviews:', err);
     }
@@ -47,14 +45,15 @@ export default function NewCommitmentPage() {
 
   const fetchActivities = async (reviewId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const review = await axios.get(`${API_URL}/reviews/${reviewId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      // Extraer actividades de las validaciones
-      const acts = review.data.validations?.map((v: any) => v.activity) || [];
-      setActivities(acts);
+      const review = await apiClient.get(`/reviews/${reviewId}`);
+      const poaPeriodId = review?.poaPeriodId;
+      if (!poaPeriodId) {
+        setActivities([]);
+        return;
+      }
+
+      const acts = await apiClient.get(`/agreement-activities/period/${poaPeriodId}`);
+      setActivities(acts || []);
     } catch (err) {
       console.error('Error fetching activities:', err);
     }
@@ -66,10 +65,7 @@ export default function NewCommitmentPage() {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/commitments`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiClient.post('/commitments', formData);
       
       router.push('/commitments');
     } catch (err: any) {
@@ -84,6 +80,10 @@ export default function NewCommitmentPage() {
       [e.target.name]: e.target.value,
     });
   };
+
+  const filteredActivities = useMemo(() => {
+    return activities;
+  }, [activities]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -105,8 +105,8 @@ export default function NewCommitmentPage() {
               Revisión/Semestre *
             </label>
             <select
-              name="reviewId"
-              value={formData.reviewId}
+              name="reviewCycleId"
+              value={formData.reviewCycleId}
               onChange={handleChange}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
@@ -125,36 +125,20 @@ export default function NewCommitmentPage() {
               Actividad Relacionada *
             </label>
             <select
-              name="activityId"
-              value={formData.activityId}
+              name="agreementActivityId"
+              value={formData.agreementActivityId}
               onChange={handleChange}
               required
-              disabled={!formData.reviewId}
+              disabled={!formData.reviewCycleId}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             >
               <option value="">Seleccionar actividad</option>
-              {activities.map((activity) => (
+              {filteredActivities.map((activity) => (
                 <option key={activity.id} value={activity.id}>
                   {activity.description || activity.name || activity.id}
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Título *
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              required
-              maxLength={200}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              placeholder="Título del compromiso"
-            />
           </div>
 
           <div>

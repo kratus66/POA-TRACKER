@@ -13,6 +13,7 @@ import { Agreement } from '../../agreements/entities/agreement.entity';
 import { PoaPeriod } from '../../poa-periods/entities/poa-period.entity';
 import { Validation } from '../../validations/entities/validation.entity';
 import { Evidence } from '../../evidences/entities/evidence.entity';
+import { Commitment } from '../../commitments/entities/commitment.entity';
 
 export enum ReviewStatus {
   DRAFT = 'DRAFT',
@@ -84,4 +85,10 @@ export class Review {
     onDelete: 'CASCADE',
   })
   evidences?: Evidence[];
+
+  @OneToMany(() => Commitment, (commitment) => commitment.review, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  commitments?: Commitment[];
 }

@@ -12,6 +12,7 @@ import {
 import { Review } from '../../reviews/entities/review.entity';
 import { PoaActivity } from '../../poa-activities/entities/poa-activity.entity';
 import { ActivityTracking } from '../../activity-tracking/entities/activity-tracking.entity';
+import { PoaTheme } from '../../poa-themes/entities/poa-theme.entity';
 
 export enum ValidationStatus {
   CUMPLE = 'CUMPLE',
@@ -23,6 +24,7 @@ export enum ValidationStatus {
 @Entity('validations')
 @Index(['reviewId'])
 @Index(['activityId'])
+@Index(['themeId'])
 export class Validation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -64,6 +66,16 @@ export class Validation {
   })
   @JoinColumn({ name: 'activityId' })
   activity?: PoaActivity;
+
+  @ManyToOne(() => PoaTheme, (theme) => theme.validations, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'themeId' })
+  theme?: PoaTheme;
+
+  @Column({ nullable: true, comment: 'ID del tema POA' })
+  themeId?: string;
 
   @OneToMany(
     () => ActivityTracking,

@@ -1,9 +1,9 @@
 // Types for application
 export enum UserRole {
   ADMIN = 'ADMIN',
-  REGIONAL_MANAGER = 'REGIONAL_MANAGER',
-  PROGRAM_COORDINATOR = 'PROGRAM_COORDINATOR',
-  MUNICIPAL_TEAM = 'MUNICIPAL_TEAM',
+  SUPERVISOR_POA = 'SUPERVISOR_POA',
+  COORDINATOR = 'COORDINATOR',
+  USER = 'USER',
 }
 
 export enum DocumentType {
@@ -73,10 +73,9 @@ export interface Audit {
 export enum CommitmentStatus {
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',
-  OVERDUE = 'OVERDUE',
 }
 
-export enum ResponsibleRole {
+export enum CommitmentResponsibleRole {
   MUNICIPAL_TEAM = 'MUNICIPAL_TEAM',
   PROGRAM_COORDINATOR = 'PROGRAM_COORDINATOR',
   REGIONAL_MANAGER = 'REGIONAL_MANAGER',
@@ -84,19 +83,18 @@ export enum ResponsibleRole {
 
 export interface Commitment {
   id: string;
-  title: string;
   description: string;
   status: CommitmentStatus;
-  responsibleRole: ResponsibleRole;
+  responsibleRole: CommitmentResponsibleRole;
   dueDate: string;
   closedAt?: string;
-  reviewId: string;
-  activityId: string;
-  createdById: string;
+  reviewCycleId: string;
+  agreementActivityId: string;
+  createdByUserId?: string;
   createdAt: string;
   updatedAt: string;
   review?: any;
-  activity?: any;
+  agreementActivity?: any;
   createdBy?: any;
 }
 

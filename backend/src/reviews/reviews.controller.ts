@@ -13,10 +13,13 @@ import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dtos/create-review.dto';
 import { UpdateReviewStatusDto } from './dtos/update-review-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 @ApiTags('reviews')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('reviews')
 export class ReviewsController {
   constructor(private reviewsService: ReviewsService) {}
@@ -42,6 +45,7 @@ export class ReviewsController {
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Cambiar estado de revisión' })
+  @Roles(UserRole.SUPERVISOR_POA, UserRole.ADMIN)
   async updateStatus(
     @Param('id') id: string,
     @Body() updateDto: UpdateReviewStatusDto,

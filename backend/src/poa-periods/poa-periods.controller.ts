@@ -15,6 +15,7 @@ import {
   CreatePoaPeriodDto,
   PoaPeriodFilterDto,
   AssignSupervisorToPoaDto,
+  UpdatePoaPeriodDto,
 } from './dtos/poa-period.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -71,7 +72,7 @@ export class PoaPeriodsController {
   @ApiResponse({ status: 200, description: 'Vigencia POA actualizada' })
   async update(
     @Param('id') id: string,
-    @Body() updatePoaPeriodDto: CreatePoaPeriodDto,
+    @Body() updatePoaPeriodDto: UpdatePoaPeriodDto,
   ) {
     return this.poaPeriodsService.update(id, updatePoaPeriodDto);
   }

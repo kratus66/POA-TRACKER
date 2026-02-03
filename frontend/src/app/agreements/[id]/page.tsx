@@ -11,7 +11,15 @@ interface Municipality {
   id: string;
   code: string;
   name: string;
-  department: string;
+  department?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface Department {
+  id: string;
+  name: string;
 }
 
 interface Agreement {
@@ -22,6 +30,7 @@ interface Agreement {
   status: string;
   municipality: Municipality;
   description?: string;
+  programs?: Program[];
   createdAt: string;
 }
 
@@ -44,16 +53,6 @@ interface PoaTemplate {
   description?: string;
 }
 
-interface AgreementActivity {
-  id: string;
-  name: string;
-  description?: string;
-  meta?: number;
-  unit?: string;
-  progress: number;
-  status: string;
-  program?: Program;
-}
 
 interface PoaPeriod {
   id: string;
@@ -82,24 +81,22 @@ export default function AgreementDetail() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
 
   const [agreement, setAgreement] = useState<Agreement | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [poaPeriods, setPoaPeriods] = useState<PoaPeriod[]>([]);
   const [supervisors, setSupervisors] = useState<User[]>([]);
   const [templates, setTemplates] = useState<PoaTemplate[]>([]);
-  const [activities, setActivities] = useState<AgreementActivity[]>([]);
-  const [loadingActivities, setLoadingActivities] = useState(false);
-  const [activityEdits, setActivityEdits] = useState<
-    Record<string, { progress: number; status: string }>
-  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreatePoa, setShowCreatePoa] = useState(false);
   const [newPoaYear, setNewPoaYear] = useState(new Date().getFullYear());
   const [newPoaNotes, setNewPoaNotes] = useState('');
-  const [selectedPoaId, setSelectedPoaId] = useState<string | null>(null);
   const [selectedSupervisorId, setSelectedSupervisorId] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [selectedPoaForApply, setSelectedPoaForApply] = useState('');
-  const [selectedPoaForActivities, setSelectedPoaForActivities] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedMunicipalityId, setSelectedMunicipalityId] = useState('');
+  const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
+  const [savingAgreementSettings, setSavingAgreementSettings] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -113,25 +110,62 @@ export default function AgreementDetail() {
       fetchPoaPeriods();
       fetchSupervisors();
       fetchTemplates();
+      fetchDepartments();
+      fetchPrograms();
     }
   }, [agreementId]);
 
   useEffect(() => {
-    if (selectedPoaForActivities) {
-      fetchActivities(selectedPoaForActivities);
+    if (selectedDepartmentId) {
+      fetchMunicipalities(selectedDepartmentId);
+    } else {
+      setMunicipalities([]);
     }
-  }, [selectedPoaForActivities]);
+  }, [selectedDepartmentId]);
 
   const fetchAgreement = async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/agreements/${agreementId}`);
       setAgreement(response);
+      setSelectedDepartmentId(response?.municipality?.department?.id || '');
+      setSelectedMunicipalityId(response?.municipality?.id || '');
+      setSelectedProgramIds((response?.programs || []).map((p: Program) => p.id));
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Error al cargar convenio');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await apiClient.get('/municipalities/departments');
+      setDepartments(response || []);
+    } catch (err) {
+      console.error('Error cargando departamentos', err);
+    }
+  };
+
+  const fetchMunicipalities = async (departmentId: string) => {
+    try {
+      const response = await apiClient.get(
+        `/municipalities?departmentId=${departmentId}&page=1&limit=200`,
+      );
+      setMunicipalities(response?.data || []);
+    } catch (err) {
+      console.error('Error cargando municipios', err);
+      setMunicipalities([]);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await apiClient.get('/programs/active/list');
+      setPrograms(response || []);
+    } catch (err) {
+      console.error('Error cargando programas', err);
     }
   };
 
@@ -167,131 +201,62 @@ export default function AgreementDetail() {
     }
   };
 
-  const fetchActivities = async (poaPeriodId: string) => {
-    try {
-      setLoadingActivities(true);
-      const response = await apiClient.get(
-        `/agreement-activities/period/${poaPeriodId}`
-      );
-      const data = response || [];
-      setActivities(data);
-      const edits = data.reduce(
-        (acc: Record<string, { progress: number; status: string }>, item: AgreementActivity) => {
-          acc[item.id] = {
-            progress: item.progress ?? 0,
-            status: item.status || 'PENDING',
-          };
-          return acc;
-        },
-        {}
-      );
-      setActivityEdits(edits);
-    } catch (err) {
-      console.error('Error fetching activities:', err);
-      setActivities([]);
-    } finally {
-      setLoadingActivities(false);
-    }
+  const handleToggleProgram = (programId: string) => {
+    setSelectedProgramIds((prev) =>
+      prev.includes(programId)
+        ? prev.filter((id) => id !== programId)
+        : [...prev, programId],
+    );
   };
 
-  const handleCreatePoaPeriod = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await apiClient.post('/poa-periods', {
-        year: newPoaYear,
-        agreementId,
-        notes: newPoaNotes,
-      });
-      setNewPoaYear(new Date().getFullYear());
-      setNewPoaNotes('');
-      setShowCreatePoa(false);
-      await fetchPoaPeriods();
-      alert('Vigencia POA creada exitosamente');
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Error desconocido';
-      alert('Error al crear vigencia POA: ' + errorMessage);
+  const handleSaveAgreementSettings = async () => {
+    if (!selectedMunicipalityId) {
+      alert('Selecciona un municipio');
+      return;
     }
-  };
 
-  const handleAssignSupervisor = async () => {
-    if (!selectedPoaId || !selectedSupervisorId) {
-      alert('Selecciona una vigencia y un supervisor');
+    if (!newPoaYear) {
+      alert('Selecciona el año de la vigencia');
       return;
     }
 
     try {
-      await apiClient.patch(`/poa-periods/${selectedPoaId}/assign-supervisor`, {
-        supervisorId: selectedSupervisorId,
+      setSavingAgreementSettings(true);
+
+      await apiClient.patch(`/agreements/${agreementId}`, {
+        municipalityId: selectedMunicipalityId,
+        programIds: selectedProgramIds,
       });
-      setSelectedPoaId(null);
-      setSelectedSupervisorId('');
-      await fetchPoaPeriods();
-      alert('Supervisor asignado exitosamente');
-    } catch (err: any) {
-      alert(
-        'Error al asignar supervisor: ' +
-          (err.message || 'Error desconocido')
-      );
-    }
-  };
 
-  const handleApplyTemplate = async () => {
-    if (!selectedTemplateId || !selectedPoaForApply) {
-      alert('Selecciona plantilla y vigencia');
-      return;
-    }
-
-    const poa = poaPeriods.find((p) => p.id === selectedPoaForApply);
-    if (!poa) {
-      alert('Vigencia no encontrada');
-      return;
-    }
-
-    try {
-      await apiClient.post(
-        `/agreements/${agreementId}/apply-template/${selectedTemplateId}?year=${poa.year}`,
-        {}
-      );
-      await fetchPoaPeriods();
-      await fetchActivities(poa.id);
-      setSelectedPoaForActivities(poa.id);
-      alert('Plantilla aplicada exitosamente');
-    } catch (err: any) {
-      alert(
-        'Error al aplicar plantilla: ' + (err.message || 'Error desconocido')
-      );
-    }
-  };
-
-  const handleActivityEdit = (
-    id: string,
-    field: 'progress' | 'status',
-    value: string | number
-  ) => {
-    setActivityEdits((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleSaveActivity = async (id: string) => {
-    const edit = activityEdits[id];
-    if (!edit) return;
-
-    try {
-      await apiClient.patch(`/agreement-activities/${id}`, {
-        progress: Number(edit.progress),
-        status: edit.status,
-      });
-      if (selectedPoaForActivities) {
-        await fetchActivities(selectedPoaForActivities);
+      try {
+        await apiClient.post('/poa-periods', {
+          year: newPoaYear,
+          agreementId,
+          notes: newPoaNotes,
+          supervisorId: selectedSupervisorId || undefined,
+        });
+      } catch (err: any) {
+        const message = err.response?.data?.message || '';
+        if (!message.includes('Ya existe un POA')) {
+          throw err;
+        }
       }
-      alert('Actividad actualizada');
+
+      if (selectedTemplateId) {
+        await apiClient.post(
+          `/agreements/${agreementId}/apply-template/${selectedTemplateId}?year=${newPoaYear}`,
+          {},
+        );
+      }
+
+      await fetchAgreement();
+      await fetchPoaPeriods();
+      setNewPoaNotes('');
+      alert('Convenio y vigencia actualizados');
     } catch (err: any) {
-      alert('Error al actualizar actividad: ' + (err.message || 'Error desconocido'));
+      alert(err.response?.data?.message || 'Error al guardar la configuración');
+    } finally {
+      setSavingAgreementSettings(false);
     }
   };
 
@@ -321,19 +286,7 @@ export default function AgreementDetail() {
 
   const startYear = new Date(agreement.startDate).getFullYear();
   const endYear = new Date(agreement.endDate).getFullYear();
-  const canEditActivities =
-    user?.role === 'ADMIN' ||
-    user?.role === 'SUPERVISOR_POA' ||
-    user?.role === 'COORDINATOR';
-  const groupedActivities = activities.reduce<Record<string, AgreementActivity[]>>(
-    (acc, activity) => {
-      const key = activity.program?.name || 'Sin programa';
-      acc[key] = acc[key] || [];
-      acc[key].push(activity);
-      return acc;
-    },
-    {}
-  );
+  
 
   return (
     <Layout>
@@ -356,7 +309,15 @@ export default function AgreementDetail() {
           <div>
             <p className="text-sm text-gray-600">Departamento</p>
             <p className="text-lg font-medium">
-              {(agreement.municipality.department as any)?.name || 'N/A'}
+              {agreement.municipality.department?.name || 'N/A'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Programas</p>
+            <p className="text-lg font-medium">
+              {agreement.programs && agreement.programs.length > 0
+                ? agreement.programs.map((p) => p.name).join(', ')
+                : 'Sin programas'}
             </p>
           </div>
           <div>
@@ -391,79 +352,86 @@ export default function AgreementDetail() {
         )}
       </div>
 
-      {/* Vigencias POA */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Vigencias POA</h2>
-          {(user?.role === 'ADMIN' || user?.role === 'COORDINATOR') && (
-            <button
-              onClick={() => setShowCreatePoa(!showCreatePoa)}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              {showCreatePoa ? 'Cancelar' : '+ Crear Vigencia'}
-            </button>
-          )}
-        </div>
-
-        {showCreatePoa && (
-          <form
-            onSubmit={handleCreatePoaPeriod}
-            className="mb-6 bg-white p-4 rounded-lg shadow-md border border-gray-200"
-          >
-            <div className="flex gap-4 items-end flex-wrap">
-              <div>
-                <label className="block text-sm font-medium mb-1">Año</label>
-                <input
-                  type="number"
-                  value={newPoaYear}
-                  onChange={(e) => setNewPoaYear(parseInt(e.target.value))}
-                  required
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
-                />
-              </div>
-              <div className="flex-1 min-w-xs">
-                <label className="block text-sm font-medium mb-1">Notas</label>
-                <textarea
-                  value={newPoaNotes}
-                  onChange={(e) => setNewPoaNotes(e.target.value)}
-                  placeholder="Agregar notas sobre esta vigencia POA..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
-                  rows={1}
-                />
-              </div>
-              <div>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Crear
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
-
-        {/* Asignar Supervisor */}
-        {(user?.role === 'ADMIN' || user?.role === 'COORDINATOR') && (
-          <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-bold mb-3">Asignar Supervisor</h3>
-            <div className="flex gap-2">
+      {(user?.role === 'ADMIN' || user?.role === 'COORDINATOR') && (
+        <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Asignar Municipio y Programas
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Departamento</label>
               <select
-                value={selectedPoaId || ''}
-                onChange={(e) => setSelectedPoaId(e.target.value || null)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                value={selectedDepartmentId}
+                onChange={(e) => {
+                  setSelectedDepartmentId(e.target.value);
+                  setSelectedMunicipalityId('');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
-                <option value="">Selecciona vigencia...</option>
-                {poaPeriods.map((poa) => (
-                  <option key={poa.id} value={poa.id}>
-                    POA {poa.year} {poa.supervisor ? '✓ ' + poa.supervisor.firstName : ''}
+                <option value="">Selecciona departamento...</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Municipio</label>
+              <select
+                value={selectedMunicipalityId}
+                onChange={(e) => setSelectedMunicipalityId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Selecciona municipio...</option>
+                {municipalities.map((mun) => (
+                  <option key={mun.id} value={mun.id}>
+                    {mun.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-2">Programas</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {programs.map((program) => (
+                <label
+                  key={program.id}
+                  className="flex items-center gap-2 text-sm bg-gray-50 border border-gray-200 rounded-md px-3 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedProgramIds.includes(program.id)}
+                    onChange={() => handleToggleProgram(program.id)}
+                    className="h-4 w-4"
+                  />
+                  <span>{program.name}</span>
+                </label>
+              ))}
+              {programs.length === 0 && (
+                <div className="text-sm text-gray-500">No hay programas activos</div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Año de Vigencia</label>
+              <input
+                type="number"
+                value={newPoaYear}
+                onChange={(e) => setNewPoaYear(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Supervisor</label>
               <select
                 value={selectedSupervisorId}
                 onChange={(e) => setSelectedSupervisorId(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">Selecciona supervisor...</option>
                 {supervisors.map((sup) => (
@@ -472,15 +440,51 @@ export default function AgreementDetail() {
                   </option>
                 ))}
               </select>
-              <button
-                onClick={handleAssignSupervisor}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Notas de la Vigencia</label>
+              <textarea
+                value={newPoaNotes}
+                onChange={(e) => setNewPoaNotes(e.target.value)}
+                placeholder="Agregar notas sobre esta vigencia POA..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                rows={2}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Plantilla POA</label>
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
-                Asignar
-              </button>
+                <option value="">Selecciona plantilla...</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        )}
+
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleSaveAgreementSettings}
+              disabled={savingAgreementSettings}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-60"
+            >
+              {savingAgreementSettings ? 'Guardando...' : 'Guardar Todo'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Vigencias POA */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Vigencias POA</h2>
+        </div>
 
         {/* Lista de Vigencias */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -550,174 +554,6 @@ export default function AgreementDetail() {
         </div>
       </div>
 
-      {/* Aplicar Plantilla */}
-      <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Aplicar Plantilla POA</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium mb-1">Vigencia</label>
-            <select
-              value={selectedPoaForApply}
-              onChange={(e) => setSelectedPoaForApply(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">Selecciona vigencia...</option>
-              {poaPeriods.map((poa) => (
-                <option key={poa.id} value={poa.id}>
-                  POA {poa.year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Plantilla</label>
-            <select
-              value={selectedTemplateId}
-              onChange={(e) => setSelectedTemplateId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">Selecciona plantilla...</option>
-              {templates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button
-              onClick={handleApplyTemplate}
-              className="w-full px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-            >
-              Aplicar Plantilla
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Actividades del POA */}
-      <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Actividades del POA</h2>
-          <select
-            value={selectedPoaForActivities}
-            onChange={(e) => setSelectedPoaForActivities(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Selecciona vigencia...</option>
-            {poaPeriods.map((poa) => (
-              <option key={poa.id} value={poa.id}>
-                POA {poa.year}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {loadingActivities ? (
-          <div className="p-6 text-center text-gray-500">Cargando actividades...</div>
-        ) : !selectedPoaForActivities ? (
-          <div className="p-6 text-center text-gray-500">Selecciona una vigencia para ver actividades</div>
-        ) : activities.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No hay actividades registradas</div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedActivities).map(([programName, programActivities]) => (
-              <div key={programName} className="border rounded-lg">
-                <div className="px-4 py-2 bg-gray-100 border-b">
-                  <h3 className="font-semibold text-gray-900">{programName}</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-white border-b">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-semibold">Actividad</th>
-                        <th className="px-4 py-2 text-left text-sm font-semibold">Meta</th>
-                        <th className="px-4 py-2 text-left text-sm font-semibold">Unidad</th>
-                        <th className="px-4 py-2 text-left text-sm font-semibold">Avance</th>
-                        <th className="px-4 py-2 text-left text-sm font-semibold">Estado</th>
-                        {canEditActivities && (
-                          <th className="px-4 py-2 text-right text-sm font-semibold">Acciones</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {programActivities.map((activity) => (
-                        <tr key={activity.id} className="border-t">
-                          <td className="px-4 py-2 text-sm">
-                            <p className="font-medium text-gray-900">{activity.name}</p>
-                            {activity.description && (
-                              <p className="text-xs text-gray-500">{activity.description}</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 text-sm">{activity.meta ?? '-'}</td>
-                          <td className="px-4 py-2 text-sm">{activity.unit || '-'}</td>
-                          <td className="px-4 py-2 text-sm">
-                            {canEditActivities ? (
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={activityEdits[activity.id]?.progress ?? activity.progress ?? 0}
-                                onChange={(e) =>
-                                  handleActivityEdit(
-                                    activity.id,
-                                    'progress',
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="w-20 px-2 py-1 border border-gray-300 rounded"
-                              />
-                            ) : (
-                              `${activity.progress ?? 0}%`
-                            )}
-                          </td>
-                          <td className="px-4 py-2 text-sm">
-                            {canEditActivities ? (
-                              <select
-                                value={activityEdits[activity.id]?.status ?? activity.status}
-                                onChange={(e) =>
-                                  handleActivityEdit(activity.id, 'status', e.target.value)
-                                }
-                                className="px-2 py-1 border border-gray-300 rounded"
-                              >
-                                <option value="PENDING">PENDING</option>
-                                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                                <option value="COMPLETED">COMPLETED</option>
-                              </select>
-                            ) : (
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                  activity.status === 'COMPLETED'
-                                    ? 'bg-green-100 text-green-800'
-                                    : activity.status === 'IN_PROGRESS'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}
-                              >
-                                {activity.status}
-                              </span>
-                            )}
-                          </td>
-                          {canEditActivities && (
-                            <td className="px-4 py-2 text-right text-sm">
-                              <button
-                                onClick={() => handleSaveActivity(activity.id)}
-                                className="text-primary-600 hover:text-primary-800"
-                              >
-                                Guardar
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
     </Layout>
   );

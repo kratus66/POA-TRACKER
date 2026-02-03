@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import axios from 'axios';
-import { Commitment, CommitmentStatus } from '@/lib/types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { apiClient } from '@/lib/api';
+import {
+  Commitment,
+  CommitmentStatus,
+  CommitmentResponsibleRole,
+} from '@/lib/types';
 
 const statusColors = {
   OPEN: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -19,7 +21,7 @@ const statusLabels = {
   OVERDUE: 'Vencido',
 };
 
-const roleLabels = {
+const roleLabels: Record<CommitmentResponsibleRole, string> = {
   MUNICIPAL_TEAM: 'Equipo Municipal',
   PROGRAM_COORDINATOR: 'Coordinador de Programa',
   REGIONAL_MANAGER: 'Coordinador Regional',
@@ -34,6 +36,13 @@ export default function CommitmentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const displayStatus = useMemo(() => {
+    if (!commitment) return 'OPEN';
+    const dueDate = new Date(commitment.dueDate);
+    const isOverdue = commitment.status === CommitmentStatus.OPEN && dueDate < new Date();
+    return isOverdue ? 'OVERDUE' : commitment.status;
+  }, [commitment]);
+
   useEffect(() => {
     if (id) {
       fetchCommitment();
@@ -43,11 +52,8 @@ export default function CommitmentDetailPage() {
   const fetchCommitment = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/commitments/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCommitment(response.data);
+      const response = await apiClient.get(`/commitments/${id}`);
+      setCommitment(response);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar compromiso');
@@ -61,12 +67,7 @@ export default function CommitmentDetailPage() {
     if (!confirm('¿Estás seguro de cerrar este compromiso?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.patch(
-        `${API_URL}/commitments/${id}/close`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.patch(`/commitments/${id}/close`, {});
       fetchCommitment();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error al cerrar compromiso');
@@ -112,10 +113,10 @@ export default function CommitmentDetailPage() {
             >
               ← Volver a Compromisos
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">{commitment.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Compromiso</h1>
           </div>
-          <div className={`px-4 py-2 rounded-lg border-2 font-semibold ${statusColors[commitment.status]}`}>
-            {statusLabels[commitment.status]}
+          <div className={`px-4 py-2 rounded-lg border-2 font-semibold ${statusColors[displayStatus]}`}>
+            {statusLabels[displayStatus]}
           </div>
         </div>
 
@@ -181,20 +182,20 @@ export default function CommitmentDetailPage() {
                 </p>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">ID: {commitment.reviewId}</p>
+              <p className="text-gray-500 text-sm">ID: {commitment.reviewCycleId}</p>
             )}
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-semibold mb-4">Actividad Relacionada</h3>
-            {commitment.activity ? (
+            {commitment.agreementActivity ? (
               <div className="space-y-2">
                 <p className="text-sm text-gray-600">
-                  {commitment.activity.description || commitment.activity.name}
+                  {commitment.agreementActivity.description || commitment.agreementActivity.name}
                 </p>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">ID: {commitment.activityId}</p>
+              <p className="text-gray-500 text-sm">ID: {commitment.agreementActivityId}</p>
             )}
           </div>
         </div>
@@ -228,7 +229,7 @@ export default function CommitmentDetailPage() {
           </div>
         )}
 
-        {commitment.status === CommitmentStatus.OVERDUE && (
+        {displayStatus === 'OVERDUE' && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <p className="text-red-800 font-medium">
               ⚠ Este compromiso está vencido
